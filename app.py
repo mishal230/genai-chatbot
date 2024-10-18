@@ -1,11 +1,14 @@
 import streamlit as st
 from transformers import pipeline
 
-# Initialize the text generation pipeline with the DialoGPT model
-pipe = pipeline("text-generation", model="microsoft/DialoGPT-medium")
-
 # Title of the app
 st.title("Chatbot using DialoGPT")
+
+# Initialize the text generation pipeline with the DialoGPT model
+try:
+    pipe = pipeline("text-generation", model="microsoft/DialoGPT-medium")
+except Exception as e:
+    st.error(f"Error initializing model: {e}")
 
 # Initialize session state to hold conversation history
 if 'conversation_history' not in st.session_state:
@@ -18,8 +21,6 @@ def generate_response(user_input):
     
     # Generate a response
     response = pipe(st.session_state.conversation_history, max_length=150, num_return_sequences=1)
-    
-    # Extracting the bot's response
     bot_response = response[0]['generated_text'].split("User:")[-1].strip()
     
     # Update conversation history with bot response
@@ -34,9 +35,9 @@ user_input = st.text_input("You:", "")
 if st.button("Send"):
     if user_input:
         bot_reply = generate_response(user_input)
-        st.text_area("Chat History", value=st.session_state.conversation_history, height=300, key="chat_history")
+        st.text_area("Chat History", value=st.session_state.conversation_history, height=300)
     else:
         st.warning("Please enter a message!")
 
 # Display chat history
-st.text_area("Chat History", value=st.session_state.conversation_history, height=300, key="chat_history_display")
+st.text_area("Chat History", value=st.session_state.conversation_history, height=300)
