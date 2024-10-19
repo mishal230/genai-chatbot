@@ -1,32 +1,34 @@
 import streamlit as st
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
+import traceback
 
 # Load the model and tokenizer
 tokenizer = AutoTokenizer.from_pretrained("microsoft/DialoGPT-medium")
-model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = AutoModelForCausalLM.from_pretrained("microsoft/DialoGPT-medium").to(device)
 
 # Function to generate response from the chatbot
 def generate_response(user_input, history=None):
     if history is None:
-        history = torch.zeros((1, 0), dtype=torch.long)  # Initialize empty chat history
+        history = torch.zeros((1, 0), dtype=torch.long).to(device)  # Ensure history is on the correct device
     # Encode user input and append it to the history
-    new_user_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt')
+    new_user_input_ids = tokenizer.encode(user_input + tokenizer.eos_token, return_tensors='pt').to(device)
     bot_input_ids = torch.cat([history, new_user_input_ids], dim=-1)
     
-    # Create an attention mask (to handle padding if required)
-    attention_mask = torch.ones(bot_input_ids.shape, dtype=torch.long)
+    # Create an attention mask
+    attention_mask = torch.ones(bot_input_ids.shape, dtype=torch.long).to(device)
     
     # Generate the bot's response
     chat_history_ids = model.generate(
         bot_input_ids, 
-        max_length=1000, 
+        max_length=500,  # Reduced length for memory efficiency
         pad_token_id=tokenizer.eos_token_id, 
         attention_mask=attention_mask,
-        do_sample=True,           # Enable sampling for more diverse responses
-        top_k=50,                 # Keep only the top 50 tokens
-        top_p=0.95,               # Nucleus sampling
-        temperature=0.7           # Control randomness
+        do_sample=True,  
+        top_k=50,  
+        top_p=0.95,  
+        temperature=0.7  
     )
     
     # Decode and return the response
@@ -57,10 +59,10 @@ if user_input:
         # Display the conversation in a neat format
         st.write(f"**You:** {user_input}")
         st.write(f"**Bot:** {response}")
-        
     except Exception as e:
         # Handle any errors gracefully
         st.error(f"Something went wrong: {str(e)}")
+        st.error(traceback.format_exc())  # Print the full traceback
 
 # Optional footer
 st.markdown("---")
